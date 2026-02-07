@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+		<title>Date Hunt 🕵️‍♂️</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet" />
+		<style>
+			:root {
+				--primary: #ff4757;
+				--bg: #f0f2f5;
+				--card: #ffffff;
+				--text: #2f3542;
+				--shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+			}
+
+			* {
+				box-sizing: border-box;
+				-webkit-tap-highlight-color: transparent;
+			}
+
+			body {
+				font-family: "Poppins", sans-serif;
+				background-color: var(--bg);
+				color: var(--text);
+				margin: 0;
+				padding: 0;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+				min-height: 100vh;
+				overflow-x: hidden;
+			}
+
+			/* The Main Card */
+			.game-card {
+				background: var(--card);
+				width: 90%;
+				max-width: 400px;
+				padding: 2rem;
+				border-radius: 24px;
+				box-shadow: var(--shadow);
+				text-align: center;
+				transition:
+					transform 0.3s ease,
+					opacity 0.3s ease;
+				position: relative;
+				overflow: hidden;
+			}
+
+			/* Header Elements */
+			.emoji-header {
+				font-size: 4rem;
+				margin-bottom: 0.5rem;
+				display: block;
+				animation: float 3s ease-in-out infinite;
+			}
+			h1 {
+				font-size: 1.5rem;
+				margin: 0 0 1rem 0;
+				font-weight: 800;
+				color: var(--text);
+			}
+			.clue-text {
+				font-size: 1.1rem;
+				line-height: 1.6;
+				color: #57606f;
+				margin-bottom: 2rem;
+			}
+
+			/* Inputs */
+			input[type="text"] {
+				width: 100%;
+				padding: 16px;
+				border: 2px solid #dfe4ea;
+				border-radius: 16px;
+				font-size: 1.1rem;
+				font-family: "Poppins", sans-serif;
+				margin-bottom: 1rem;
+				text-align: center;
+				outline: none;
+				transition: border-color 0.2s;
+				-webkit-appearance: none;
+			}
+
+			input[type="text"]:focus {
+				border-color: var(--primary);
+			}
+
+			/* Buttons */
+			button {
+				background: var(--primary);
+				color: white;
+				border: none;
+				padding: 16px;
+				width: 100%;
+				border-radius: 16px;
+				font-size: 1.1rem;
+				font-weight: 600;
+				cursor: pointer;
+				box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+				transition: transform 0.1s;
+			}
+
+			button:active {
+				transform: scale(0.98);
+			}
+
+			/* Feedback UI */
+			.toast {
+				position: fixed;
+				top: 20px;
+				left: 50%;
+				transform: translateX(-50%) translateY(-100px);
+				background: #2f3542;
+				color: white;
+				padding: 12px 24px;
+				border-radius: 50px;
+				font-size: 0.9rem;
+				box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+				transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+				z-index: 100;
+				white-space: nowrap;
+			}
+
+			.toast.visible {
+				transform: translateX(-50%) translateY(0);
+			}
+			.toast.error {
+				background: #ff4757;
+			}
+			.toast.success {
+				background: #2ed573;
+			}
+
+			/* Progress Bar */
+			.progress-container {
+				position: absolute;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 6px;
+				background: #f1f2f6;
+			}
+			.progress-bar {
+				height: 100%;
+				background: var(--primary);
+				width: 0%;
+				transition: width 0.5s ease;
+			}
+
+			/* Animations */
+			@keyframes float {
+				0% {
+					transform: translateY(0px);
+				}
+				50% {
+					transform: translateY(-10px);
+				}
+				100% {
+					transform: translateY(0px);
+				}
+			}
+			.shake {
+				animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+			}
+			@keyframes shake {
+				10%,
+				90% {
+					transform: translate3d(-1px, 0, 0);
+				}
+				20%,
+				80% {
+					transform: translate3d(2px, 0, 0);
+				}
+				30%,
+				50%,
+				70% {
+					transform: translate3d(-4px, 0, 0);
+				}
+				40%,
+				60% {
+					transform: translate3d(4px, 0, 0);
+				}
+			}
+
+			/* Confetti Canvas */
+			#confetti {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				pointer-events: none;
+				z-index: 999;
+			}
+
+			.hidden {
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas id="confetti"></canvas>
+
+		<div id="toast" class="toast">Incorrect!</div>
+
+		<div class="game-card">
+			<div class="progress-container">
+				<div class="progress-bar" id="progress-bar"></div>
+			</div>
+
+			<div id="content-area"></div>
+		</div>
+
+		<script>
+			// --- 🕵️‍♂️ THE TREASURE HUNT CONFIG ---
+			// You can edit the "text" and "answer" fields below.
+			const huntData = [
+				{
+					emoji: "👋",
+					title: "The Third Date Protocol",
+					text: "Welcome to the mission. I promised you a fun date, no dije que iba a ser facil. <br><br>To start, type <b>'the clue'</b> below.",
+					answer: ["peru"],
+					successMsg: "Let's gooooo 🚀",
+				},
+				{
+					emoji: "🌉",
+					title: "Stop 1: The Legend",
+					text: "We are at the Magere Brug. Legend says a kiss here lasts forever. (No pressure lol). <br><br>Look closely at the bridge... What year is written on it?",
+					answer: ["1934"], // The current bridge was built in 1934
+					successMsg: "Big brain energy 🧠",
+				},
+				{
+					emoji: "📚",
+					title: "Stop 2: Dark Academia",
+					text: "Walk to <b>Oudemanhuispoort</b>. It's that covered passage where they sell books.<br><br>Find the crest above the entrance. What animal is wearing a crown in the city seal?",
+					answer: ["lion", "leeuw", "a lion"],
+					successMsg: "Correct! You're a natural.",
+				},
+				{
+					emoji: "🏠",
+					title: "Stop 3: The Secret Court",
+					text: "Go to the <b>Begijnhof</b>. Shhh! 🤫 It's quiet time.<br><br>Find the Wooden House (Houten Huys) at number 34. It is one of the oldest in Amsterdam. What year is painted on its black front?",
+					answer: ["1528"],
+					successMsg: "History buff? I like it.",
+				},
+				{
+					emoji: "🍺",
+					title: "The Final Destination",
+					text: "Okay, I'm thirsty. Let's wrap this up.<br><br>Go to <b>Café 't Smalle</b> on the Egelantiersgracht. It's a famous distillery from 1780.<br><br>What is the password to get your drink? (Hint: Just type 'cheers')",
+					answer: ["cheers", "proost", "borrel"],
+					successMsg: "Mission Accomplished! 🥂",
+				},
+				{
+					emoji: "🏆",
+					title: "YOU MADE IT!",
+					text: "Congrats! You survived the hunt. Now, let's get some drinks and bitterballen. My treat. <br><br>(Put your phone away now 😉)",
+					isFinal: true,
+				},
+			];
+
+			// --- ⚙️ THE ENGINE (Don't touch unless you code) ---
+
+			let currentStage = 0;
+
+			// Load progress
+			const savedProgress = localStorage.getItem("dateHuntProgress");
+			if (savedProgress) {
+				currentStage = parseInt(savedProgress);
+			}
+
+			const contentArea = document.getElementById("content-area");
+			const progressBar = document.getElementById("progress-bar");
+			const toast = document.getElementById("toast");
+
+			function renderStage() {
+				const stage = huntData[currentStage];
+				const progressPercent = (currentStage / (huntData.length - 1)) * 100;
+				progressBar.style.width = `${progressPercent}%`;
+
+				// Check if final stage
+				if (stage.isFinal) {
+					contentArea.innerHTML = `
+                <span class="emoji-header">${stage.emoji}</span>
+                <h1>${stage.title}</h1>
+                <p class="clue-text">${stage.text}</p>
+                <button onclick="resetGame()" style="background:#555; margin-top:20px; font-size:0.8rem;">Restart Game</button>
+            `;
+					triggerConfetti();
+				} else {
+					contentArea.innerHTML = `
+                <span class="emoji-header">${stage.emoji}</span>
+                <h1>${stage.title}</h1>
+                <p class="clue-text">${stage.text}</p>
+                <input type="text" id="answer-input" placeholder="Type answer here..." autocomplete="off">
+                <button onclick="checkAnswer()">Unlock Next Clue</button>
+            `;
+
+					// Allow "Enter" key to submit
+					setTimeout(() => {
+						document.getElementById("answer-input").addEventListener("keypress", function (event) {
+							if (event.key === "Enter") checkAnswer();
+						});
+					}, 100);
+				}
+			}
+
+			function checkAnswer() {
+				const input = document.getElementById("answer-input");
+				const userGuess = input.value.trim().toLowerCase();
+				const correctAnswers = huntData[currentStage].answer; // Array of valid answers
+
+				// Check if guess matches ANY valid answer
+				const isCorrect = correctAnswers.some((ans) => userGuess.includes(ans));
+
+				if (isCorrect) {
+					showToast(huntData[currentStage].successMsg, "success");
+					currentStage++;
+					localStorage.setItem("dateHuntProgress", currentStage);
+
+					// Small delay for UI feel
+					setTimeout(renderStage, 500);
+				} else {
+					// Random sassy error messages
+					const errors = ["Bruh 💀", "Pathetic🫏", "u stupid or what?", "Google is your friend...", "Not even close 😂"];
+					const randomError = errors[Math.floor(Math.random() * errors.length)];
+
+					showToast(randomError, "error");
+					input.classList.add("shake");
+					setTimeout(() => input.classList.remove("shake"), 500);
+				}
+			}
+
+			function showToast(msg, type) {
+				toast.innerText = msg;
+				toast.className = `toast visible ${type}`;
+				setTimeout(() => {
+					toast.className = "toast";
+				}, 2000);
+			}
+
+			function resetGame() {
+				localStorage.clear();
+				location.reload();
+			}
+
+			// --- 🎉 CONFETTI EFFECT ---
+			function triggerConfetti() {
+				const canvas = document.getElementById("confetti");
+				const ctx = canvas.getContext("2d");
+				canvas.width = window.innerWidth;
+				canvas.height = window.innerHeight;
+
+				const pieces = [];
+				for (let i = 0; i < 100; i++) {
+					pieces.push({
+						x: Math.random() * canvas.width,
+						y: Math.random() * canvas.height - canvas.height,
+						color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+						size: Math.random() * 10 + 5,
+						speed: Math.random() * 5 + 2,
+					});
+				}
+
+				function draw() {
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+					pieces.forEach((p) => {
+						ctx.fillStyle = p.color;
+						ctx.fillRect(p.x, p.y, p.size, p.size);
+						p.y += p.speed;
+						if (p.y > canvas.height) p.y = -20;
+					});
+					requestAnimationFrame(draw);
+				}
+				draw();
+			}
+
+			// Init
+			renderStage();
+		</script>
+	</body>
+</html>
